@@ -19,8 +19,7 @@
     filters: {},
     geographyConfig: {
         dataUrl: null,
-        hideAntarctica: true,
-        hideHawaiiAndAlaska : false,
+        countryFilter: null,
         borderWidth: 1,
         borderOpacity: 1,
         borderColor: '#FDFDFD',
@@ -187,10 +186,13 @@
     }
 
     var geoData = topojson.feature( data, data.objects[ this.options.scope ] ).features;
-    if ( geoConfig.hideAntarctica ) {
-      geoData = geoData.filter(function(feature) {
-        return feature.id !== "ATA";
-      });
+    if ( geoConfig.countryFilter != null) {
+        if (!geoConfig.countryFilter.slice) {
+            throw "Datamaps Error - countryFilter must be an array";
+        }
+        geoData = geoData.filter(function(feature) {
+            return geoConfig.countryFilter.indexOf(feature.id) !== -1;
+        });
     }
 
     if ( geoConfig.hideHawaiiAndAlaska ) {
