@@ -1,15 +1,37 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <script src="./libs/d3.min.js"></script>
-        <script src="./libs/topojson.js"></script>
-        <script src="./libs/datamaps.all.js"></script>
-        <link rel="stylesheet" href="index.css" type="text/css">
-    </head>
-    <body>
-        <input type="text" id="country-guess"/>
-        <div id="map-container"></div>
-        <script src="index.js"></script>
-    </body>
-   
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolink</title>
+    <link rel="stylesheet" href="index.css" type="text/css">
+    <script src="./libs/d3.min.js"></script>
+    <script src="./libs/topojson.js"></script>
+    <script src="./libs/datamaps.all.js"></script>
+</head>
+<body>
+    <div class="container text-center">
+        <h1>Geolink</h1>
+        <p>Find the shortest path between two given countries by listing the countries in between.</p>
+        <div class="row">
+            <div class="col-left">
+                <button id="reset" class="btn btn-danger"><i class="fas fa-redo"></i></button>
+                <div><div id="map-container"></div></div>
+                <p><strong><span id="country-1">Germany</span></strong> to <strong><span id="country-2">Russia</span></strong></p>
+                <p><strong>Shortest path:</strong> <span id="path-length">0</span></p>
+            </div>
+            <div class="col-right">
+                <div>
+                    <input type="text" class="form-control" id="country-guess" placeholder="Enter your guess">
+                </div>
+                <!-- <button id="submit" class="btn btn-primary">Submit</button> -->
+                <div>
+                    <h5>Current Guesses:</h5>
+                    <div id="guess-list" class="guess-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="index.js"></script>
 </html>

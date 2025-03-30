@@ -2,7 +2,19 @@ let map = null;
 let state = {
     countryFilter: null,
 }
-setState(state);
+
+
+
+window.onload = () => {
+    document.getElementById("country-guess").addEventListener("keydown",(e) => {
+        if(e.keyCode == 13) {
+            onGuessCountry(document.getElementById("country-guess").value);
+            document.getElementById("country-guess").value = '';
+        }
+    });
+    keepMapAspectRatio();
+    setState({});
+}
 
 function setState(newState) {
     state = {...state, ...newState};
@@ -17,12 +29,10 @@ function setState(newState) {
     });
     console.log("qqq state", state)
 }
-document.getElementById("country-guess").addEventListener("keydown",(e) => {
-    if(e.keyCode == 13) {
-        onGuessCountry(document.getElementById("country-guess").value);
-        document.getElementById("country-guess").value = '';
-    }
-});
+
+function keepMapAspectRatio() {
+    document.getElementById("map-container").style = `height: ${document.getElementById("map-container").offsetWidth * 9/16}px;`;
+}
 
 function onGuessCountry(guess) {
     let countryId = countryNameToIdMap.get(guess.toLowerCase())
@@ -31,16 +41,20 @@ function onGuessCountry(guess) {
         if(state.countryFilter == null) {
             setState({countryFilter: [countryId]})
         } else {
-            if(state.countryFilter.some(countryID => haveBorder(countryID, countryId))) {
+            // if(state.countryFilter.some(countryID => haveBorder(countryID, countryId))) {
                 setState({countryFilter: Array.from(new Set([...state.countryFilter, countryId]))})
-            }
+            // }
         }
         
     }
 }
 
 window.addEventListener("resize", () => {
-    map.resize();
+    // map.resize();
+    console.log("qqq resize")
+    keepMapAspectRatio();
+    this.setState({});
+
 })
 
 const allArcs = Datamap.prototype.worldTopo.arcs;
@@ -64,7 +78,7 @@ countries.forEach((country, idx) => {
     const pointsList = [];
     flatArcs.forEach((arcId) => {
         let currPos = null;
-        allArcs[arcId > 0 ? arcId : ~arcId]?.forEach((val) => {
+        allArcs[arcId >= 0 ? arcId : ~arcId].forEach((val) => {
             if(currPos == null) {
                 currPos = {x: val[0], y: val[1]};
             } else {
@@ -75,7 +89,6 @@ countries.forEach((country, idx) => {
         
     })
     countryPointMap.set(country.id, pointsList);
-    console.log("qqq id and idx", country.id, idx)
     countryIdToIdxMap.set(country.id, idx);
     countryIds.push(country.id)
     countryNameToIdMap.set(country.properties.name.toLowerCase(), country.id)

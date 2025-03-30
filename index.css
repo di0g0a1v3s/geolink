@@ -1,4 +1,137 @@
-#map-container {
+body { 
+    background-color: #f1f5f8; 
+    color: #343a40; 
+    font-family: 'Roboto', sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.container { 
+    padding: 30px; 
+    background: #ffffff; 
+    border-radius: 15px; 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+    max-width: 100%;
+    flex-grow: 1;
+}
+
+#map-container { 
+    background-color: #e0e5ec; 
+    border-radius: 10px; 
     width: 100%;
-    height: 500px;
+    /* min-height: 300px; */
+    /* aspect-ratio: 16 / 9; */
+    /* position: relative; */
+}
+
+#reset { 
+    position: absolute; 
+    top: 10px; 
+    right: 10px; 
+    background: #dc3545; 
+    border: none; 
+    color: white; 
+    border-radius: 50%; 
+    padding: 10px; 
+    font-size: 18px; 
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); 
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+#reset:hover { 
+    background: #c82333; 
+}
+
+input { 
+    background: #ffffff; 
+    color: #495057; 
+    border: 1px solid #ced4da; 
+    border-radius: 10px;
+    padding: 10px; 
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+input:focus { 
+    border-color: #007bff; 
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.btn {
+    color: white;
+    margin-top: 4px;
+}
+
+.btn-primary { 
+    background: #007bff; 
+    border: none; 
+    padding: 12px; 
+    border-radius: 10px; 
+    font-weight: bold;
+    transition: background 0.3s ease;
+}
+
+.btn-primary:hover { 
+    background: #0056b3; 
+}
+
+
+.guess-list span.correct { 
+    color: #28a745; 
+    font-weight: bold; 
+    padding: 5px 10px;
+    border-radius: 5px; 
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.guess-list span.incorrect { 
+    color: #dc3545; 
+    font-weight: bold; 
+    padding: 5px 10px;
+    border-radius: 5px; 
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+}
+
+.col-left, .col-right {
+    padding: 20px;
+    flex: 1; 
+}
+
+/* For larger screens, display as two columns */
+@media (min-width: 768px) {
+    .row {
+        display: flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+    }
+    .col-left {
+        flex: 1; 
+    }
+    
+    .col-right {
+        flex: 0.3; 
+    }
+    body { 
+        padding-top: 100px 20px 100px 20px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 70%;
+    }
 }
