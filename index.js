@@ -1,3 +1,7 @@
+// TODO: Show the correct shortest path after a wrong attempt
+// TODO: Better feedback for invalid guesses
+// TODO: Zoom in on map
+
 class UIController {
     constructor() {
         this.gameController = new GameController(
@@ -14,6 +18,7 @@ class UIController {
                     guessedCountries: [...(this.state.guessedCountries ?? []), guessedCountry],
                     gameState,
                 });
+                document.getElementById("country-guess").value = '';
             }
         );
 
@@ -25,8 +30,7 @@ class UIController {
         window.onload = () => {
             document.getElementById("country-guess").addEventListener("keydown",(e) => {
                 if(e.keyCode == 13) { // enter
-                    this.gameController.guessCountry(document.getElementById("country-guess").value);
-                    document.getElementById("country-guess").value = '';
+                    this.gameController.guessCountry(document.getElementById("country-guess").value.trim());
                 }
             });
             document.getElementById("reset").addEventListener("click", (e) => {
@@ -63,7 +67,6 @@ class UIController {
 
     setState(newState) {
         this.state = {...this.state, ...newState};
-        console.log("qqq state", this.state)
         document.getElementById('map-container').innerHTML = '';
         // rerender map
         const countryFilter = [this.state.endCountry, this.state.startCountry, ...(this.state.guessedCountries ?? [])].map(c => c.id)
@@ -73,7 +76,7 @@ class UIController {
             projection: 'mercator',
             geographyConfig: {
                 countryFilter: countryFilter,
-            }
+            },
         });
         document.getElementById("country-end").textContent = this.state.endCountry.name;
         document.getElementById("country-start").textContent = this.state.startCountry.name;
@@ -100,8 +103,13 @@ class GameController {
         this.worldMap = new WorldMap();
         this.guessedCountries = [];
         this.onGuessedCountry = onGuessedCountry;
-        const allCountries = this.worldMap.getAllCountryIds();
-        this.graph = new Graph(allCountries, (c1, c2) => this.worldMap.haveBorder(c1, c2));
+        const allCountryIds = this.worldMap.getAllCountryIds();
+        this.graph = new Graph(allCountryIds, (c1, c2) => this.worldMap.haveBorder(c1, c2));
+        // fuzzy search
+        this.fuse = new Fuse(this.worldMap.getAllCountryNames(), {
+            includeScore: true,
+            threshold: 0.3
+        });
     }
 
     init() {
@@ -125,7 +133,11 @@ class GameController {
     }
     
     guessCountry(guess) {
-        let guessCountryId = this.worldMap.getCountryIdFromName(guess);
+        const identifiedGuess = this.fuse.search(guess)?.[0]?.item;
+        let guessCountryId = null;
+        if(identifiedGuess != null) {
+            guessCountryId = this.worldMap.getCountryIdFromName(identifiedGuess);
+        }
         if(guessCountryId == null) {
             guessCountryId = this.worldMap.getAllCountryIds().find(id => id === guess.toUpperCase());
         }
@@ -154,6 +166,7 @@ class WorldMap {
         const countries = Datamap.prototype.worldTopo.objects.world.geometries;
         const countryPointMap = new Map();
         this.countryIds = [];
+        this.countryNames = [];
         this.countryIdToIdxMap = new Map();
         this.countryNameToIdMap = new Map()
         this.countryIdToNameMap = new Map()
@@ -183,6 +196,7 @@ class WorldMap {
             countryPointMap.set(country.id, pointsList);
             this.countryIdToIdxMap.set(country.id, idx);
             this.countryIds.push(country.id)
+            this.countryNames.push(country.properties.name)
             this.countryNameToIdMap.set(country.properties.name.toLowerCase(), country.id)
             this.countryIdToNameMap.set(country.id, country.properties.name)
         });
@@ -227,6 +241,10 @@ class WorldMap {
 
     getAllCountryIds() {
         return [...this.countryIds]
+    }
+
+    getAllCountryNames() {
+        return [...this.countryNames]
     }
 }
 
