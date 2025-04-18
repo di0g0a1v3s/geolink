@@ -1,5 +1,4 @@
 // TODO: Show the correct shortest path after a wrong attempt
-// TODO: Better feedback for invalid guesses
 // TODO: Zoom in on map
 
 class UIController {
