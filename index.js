@@ -1,10 +1,9 @@
-// TODO: Show the correct shortest path after a wrong attempt
-// TODO: Color
+// TODO: Dropdown country suggestions
 
 class UIController {
     constructor() {
         this.gameController = new GameController(
-            (guessedCountry, endGameInfo, boundingCoordinates) => {
+            (guessedCountry, endGameInfo, boundingCoordinates, clusters) => {
                 let gameState = "idle";
                 if(endGameInfo.pathFound) {
                     if(endGameInfo.isShortestPath) {
@@ -16,7 +15,8 @@ class UIController {
                 this.setState({
                     guessedCountries: [...(this.state.guessedCountries ?? []), guessedCountry],
                     gameState,
-                    boundingCoordinates
+                    boundingCoordinates,
+                    clusters,
                 });
                 document.getElementById("country-guess").value = '';
             }
@@ -36,9 +36,6 @@ class UIController {
             document.getElementById("reset").addEventListener("click", (e) => {
                 this.init();
             });
-            document.getElementById("overlay-reset").addEventListener("click", (e) => {
-                this.init();
-            });
             this.keepMapAspectRatio();
             this.setState({});
         };
@@ -53,13 +50,23 @@ class UIController {
             shortestPathLen: null,
             gameState: "idle",
             boundingCoordinates: null,
+            clusters: {
+                startCluster: [],
+                endCluster: [],
+            },
+            shortestPathString: '',
         };
-        const {start, end, shortestPathLen, boundingCoordinates } = this.gameController.init();
+        const {start, end, shortestPathLen, boundingCoordinates, shortestPathString } = this.gameController.init();
         this.setState({
             startCountry: start,
             endCountry: end,
             shortestPathLen,
-            boundingCoordinates
+            boundingCoordinates,
+            clusters: {
+                startCluster: [start.id],
+                endCluster: [end.id],
+            },
+            shortestPathString
         })
     }
 
@@ -71,7 +78,9 @@ class UIController {
         this.state = {...this.state, ...newState};
         document.getElementById('map-container').innerHTML = '';
         // rerender map
-        const countryFilter = [this.state.endCountry, this.state.startCountry, ...(this.state.guessedCountries ?? [])].map(c => c.id)
+        const countryFilter = this.state.gameState === "idle" ? 
+            [this.state.endCountry, this.state.startCountry, ...(this.state.guessedCountries ?? [])].map(c => c.id)
+            : null
         let center = [0,0];
         let scale = 50;
         if(this.state.boundingCoordinates != null) {
@@ -84,14 +93,28 @@ class UIController {
                 360/(this.state.boundingCoordinates.longitudeMax - this.state.boundingCoordinates.longitudeMin) * 50
             )
         }
+        const fills = {
+            defaultFill: "#ABDDA4",
+            startCluster: '#306596',
+            endCluster: '#CC4731',
+        };
+        const data = {}
+        this.state.clusters.startCluster.forEach(country => {
+            data[country] = {fillKey: 'startCluster' }
+        })
+        this.state.clusters.endCluster.forEach(country => {
+            data[country] = {fillKey: 'endCluster' }
+        })
+        
         new Datamap({
             element: document.getElementById('map-container'),
             responsive: true,
-            // projection: 'mercator',
+            fills,
+            data,
             setProjection: function(element) {
                 var projection = d3.geo.mercator()
                   .center(center)
-                  .scale(scale * element.offsetWidth/600)
+                  .scale(scale * element.offsetWidth/450)
                   .translate([element.offsetWidth / 2, element.offsetHeight / 2]);
                 var path = d3.geo.path()
                   .projection(projection);
@@ -108,15 +131,17 @@ class UIController {
         document.getElementById("guess-count").textContent = this.state.guessedCountries?.length ?? 0;
         document.getElementById("guess-list").textContent = this.state.guessedCountries?.map(c => c.name).join(", ");
         if(this.state.gameState === "idle") {
-            document.getElementById("overlay").classList.add("hidden");
+            document.getElementById("result-text").classList.add("hidden");
+            document.getElementById("country-guess").disabled = false;
         } else {
-            document.getElementById("overlay").classList.remove("hidden");
+            document.getElementById("country-guess").disabled = true;
+            document.getElementById("result-text").classList.remove("hidden");
             if(this.state.gameState === "win") {
-                document.getElementById("overlay-text").textContent = "You found the shortest path!";
-                document.getElementById("overlay-text").style.color = "green";
+                document.getElementById("result-text").textContent = "You found the shortest path!";
+                document.getElementById("result-text").style.color = "green";
             } else if(this.state.gameState === "lose") {
-                document.getElementById("overlay-text").textContent = "You found a path, but not the shortest :(";
-                document.getElementById("overlay-text").style.color = "red";
+                document.getElementById("result-text").textContent = `You found a path, but not the shortest. The shortest path is: ${this.state.shortestPathString}`;
+                document.getElementById("result-text").style.color = "red";
             }
         }
     }
@@ -154,7 +179,8 @@ class GameController {
             start: {id: start, name: this.worldMap.getCountryNameFromId(start)},
             end: {id: end, name: this.worldMap.getCountryNameFromId(end)},
             shortestPathLen: this.shortestPathLen,
-            boundingCoordinates: this.worldMap.getCountriesMinMaxCoords([start, end])
+            boundingCoordinates: this.worldMap.getCountriesMinMaxCoords([start, end]),
+            shortestPathString: shortestPath.map(u => this.worldMap.getCountryNameFromId(u)).join("→")
         }
     }
     
@@ -172,10 +198,28 @@ class GameController {
                 this.guessedCountries.push(guessCountryId);
                 const tempGraph = new Graph([...this.guessedCountries, this.start, this.end], (c1, c2) => this.worldMap.haveBorder(c1, c2));
                 const pathFound = tempGraph.shortestPath(this.start, this.end) != null;
+                let startCluster = []
+                let endCluster = []
+                if(pathFound) {
+                    startCluster = [...this.guessedCountries, this.start, this.end]
+                } else {
+                    startCluster = [this.start]
+                    endCluster = [this.end]
+                    for(let country of this.guessedCountries) {
+                        const pathToStart = tempGraph.shortestPath(this.start, country) != null;
+                        const pathToEnd = tempGraph.shortestPath(this.end, country) != null;
+                        if(pathToStart) {
+                            startCluster.push(country)
+                        } else if(pathToEnd) {
+                            endCluster.push(country)
+                        }
+                    }
+                }
                 this.onGuessedCountry(
                     {id: guessCountryId, name: this.worldMap.getCountryNameFromId(guessCountryId)},
                     {pathFound: pathFound, isShortestPath: pathFound && this.shortestPathLen >= this.guessedCountries.length},
-                    this.worldMap.getCountriesMinMaxCoords([...this.guessedCountries, this.end, this.start])
+                    this.worldMap.getCountriesMinMaxCoords([...this.guessedCountries, this.end, this.start]),
+                    { startCluster, endCluster }
                 );
             }
         }

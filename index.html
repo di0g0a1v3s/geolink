@@ -12,12 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.1.0"></script>
 </head>
 <body>
-    <div class="overlay hidden" id="overlay">
-        <div class="overlay-content">
-            <h1 id="overlay-text"></h1>
-            <button id="overlay-reset" class="btn reset"><i class="fas fa-redo"></i> Reset</button>
-        </div>
-    </div>
     <div class="container text-center">
         <h1>Geolink</h1>
         <p>Find the shortest path between two given countries by listing the countries in between.</p>
@@ -36,6 +30,9 @@
                 <div>
                     <h5>Current Guesses: <span id="guess-count">0</span></h5>
                     <div id="guess-list" class="guess-list"></div>
+                </div>
+                <div>
+                    <div id="result-text"></div>
                 </div>
             </div>
         </div>
