@@ -1,10 +1,10 @@
 // TODO: Show the correct shortest path after a wrong attempt
-// TODO: Zoom in on map
+// TODO: Color
 
 class UIController {
     constructor() {
         this.gameController = new GameController(
-            (guessedCountry, endGameInfo) => {
+            (guessedCountry, endGameInfo, boundingCoordinates) => {
                 let gameState = "idle";
                 if(endGameInfo.pathFound) {
                     if(endGameInfo.isShortestPath) {
@@ -16,6 +16,7 @@ class UIController {
                 this.setState({
                     guessedCountries: [...(this.state.guessedCountries ?? []), guessedCountry],
                     gameState,
+                    boundingCoordinates
                 });
                 document.getElementById("country-guess").value = '';
             }
@@ -51,12 +52,14 @@ class UIController {
             endCountry: null,
             shortestPathLen: null,
             gameState: "idle",
+            boundingCoordinates: null,
         };
-        const {start, end, shortestPathLen } = this.gameController.init();
+        const {start, end, shortestPathLen, boundingCoordinates } = this.gameController.init();
         this.setState({
             startCountry: start,
             endCountry: end,
-            shortestPathLen
+            shortestPathLen,
+            boundingCoordinates
         })
     }
 
@@ -69,10 +72,32 @@ class UIController {
         document.getElementById('map-container').innerHTML = '';
         // rerender map
         const countryFilter = [this.state.endCountry, this.state.startCountry, ...(this.state.guessedCountries ?? [])].map(c => c.id)
+        let center = [0,0];
+        let scale = 50;
+        if(this.state.boundingCoordinates != null) {
+            center = [
+                this.state.boundingCoordinates.longitudeMin + (this.state.boundingCoordinates.longitudeMax - this.state.boundingCoordinates.longitudeMin)/2,
+                this.state.boundingCoordinates.latitudeMin + (this.state.boundingCoordinates.latitudeMax - this.state.boundingCoordinates.latitudeMin)/2,
+            ]
+            scale =  Math.min(
+                180/(this.state.boundingCoordinates.latitudeMax - this.state.boundingCoordinates.latitudeMin) * 50, 
+                360/(this.state.boundingCoordinates.longitudeMax - this.state.boundingCoordinates.longitudeMin) * 50
+            )
+        }
         new Datamap({
             element: document.getElementById('map-container'),
             responsive: true,
-            projection: 'mercator',
+            // projection: 'mercator',
+            setProjection: function(element) {
+                var projection = d3.geo.mercator()
+                  .center(center)
+                  .scale(scale * element.offsetWidth/600)
+                  .translate([element.offsetWidth / 2, element.offsetHeight / 2]);
+                var path = d3.geo.path()
+                  .projection(projection);
+            
+                return {path: path, projection: projection};
+            },
             geographyConfig: {
                 countryFilter: countryFilter,
             },
@@ -123,11 +148,13 @@ class GameController {
         console.log("qqq", shortestPath)
         this.start = start;
         this.end = end;
+        
         this.shortestPathLen = shortestPath.length - 2
         return {
             start: {id: start, name: this.worldMap.getCountryNameFromId(start)},
             end: {id: end, name: this.worldMap.getCountryNameFromId(end)},
             shortestPathLen: this.shortestPathLen,
+            boundingCoordinates: this.worldMap.getCountriesMinMaxCoords([start, end])
         }
     }
     
@@ -147,7 +174,8 @@ class GameController {
                 const pathFound = tempGraph.shortestPath(this.start, this.end) != null;
                 this.onGuessedCountry(
                     {id: guessCountryId, name: this.worldMap.getCountryNameFromId(guessCountryId)},
-                    {pathFound: pathFound, isShortestPath: pathFound && this.shortestPathLen >= this.guessedCountries.length}
+                    {pathFound: pathFound, isShortestPath: pathFound && this.shortestPathLen >= this.guessedCountries.length},
+                    this.worldMap.getCountriesMinMaxCoords([...this.guessedCountries, this.end, this.start])
                 );
             }
         }
@@ -167,10 +195,37 @@ class WorldMap {
         this.countryIds = [];
         this.countryNames = [];
         this.countryIdToIdxMap = new Map();
-        this.countryNameToIdMap = new Map()
-        this.countryIdToNameMap = new Map()
+        this.countryNameToIdMap = new Map();
+        this.countryIdToNameMap = new Map();
+        this.countryCoordinatesMinMax = new Map();
+        topojson.feature(Datamap.prototype.worldTopo, Datamap.prototype.worldTopo.objects.world).features.forEach((data) => {
+            const id = data.id;
+            let latitudeMax = Number.NEGATIVE_INFINITY;
+            let longitudeMax = Number.NEGATIVE_INFINITY;
+            let latitudeMin = Number.POSITIVE_INFINITY;
+            let longitudeMin = Number.POSITIVE_INFINITY;
+            data.geometry.coordinates.forEach(coordinates => {
+                const allCoordinates = [];
+                if(data.geometry.type === "Polygon") {
+                    allCoordinates.push(...coordinates);
+                } else if(data.geometry.type === "MultiPolygon") {
+                    coordinates.forEach(coordinate => {
+                        allCoordinates.push(...coordinate);
+                    })
+                }
+                latitudeMax = Math.max(latitudeMax, ...allCoordinates.map(u => u[1]))
+                latitudeMin = Math.min(latitudeMin, ...allCoordinates.map(u => u[1]))
+                longitudeMax = Math.max(longitudeMax, ...allCoordinates.map(u => u[0]))
+                longitudeMin = Math.min(longitudeMin, ...allCoordinates.map(u => u[0]))
+            });
+            
+            this.countryCoordinatesMinMax.set(id, {latitudeMax, longitudeMax, latitudeMin, longitudeMin});
+        })
         
         countries.forEach((country, idx) => {
+            if(country.id === "-99") {
+                return;
+            }
             const flatArcs = []; 
             if(country.type === "Polygon") {
                 flatArcs.push(...country.arcs[0])
@@ -244,6 +299,20 @@ class WorldMap {
 
     getAllCountryNames() {
         return [...this.countryNames]
+    }
+
+    getCountriesMinMaxCoords(countryIds) {
+        let latitudeMax = Number.NEGATIVE_INFINITY;
+        let longitudeMax = Number.NEGATIVE_INFINITY;
+        let latitudeMin = Number.POSITIVE_INFINITY;
+        let longitudeMin = Number.POSITIVE_INFINITY;
+        countryIds.forEach((id) => {
+            latitudeMax = Math.max(latitudeMax, this.countryCoordinatesMinMax.get(id).latitudeMax)
+            latitudeMin = Math.min(latitudeMin, this.countryCoordinatesMinMax.get(id).latitudeMin)
+            longitudeMax = Math.max(longitudeMax, this.countryCoordinatesMinMax.get(id).longitudeMax)
+            longitudeMin = Math.min(longitudeMin, this.countryCoordinatesMinMax.get(id).longitudeMin)
+        })
+        return {latitudeMax, longitudeMax, latitudeMin, longitudeMin}
     }
 }
 
