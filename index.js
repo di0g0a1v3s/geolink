@@ -133,8 +133,10 @@ class UIController {
         if(this.state.gameState === "idle") {
             document.getElementById("result-text").classList.add("hidden");
             document.getElementById("country-guess").disabled = false;
+            document.getElementById("country-guess").classList.remove("hidden");
         } else {
             document.getElementById("country-guess").disabled = true;
+            document.getElementById("country-guess").classList.add("hidden");
             document.getElementById("result-text").classList.remove("hidden");
             if(this.state.gameState === "win") {
                 document.getElementById("result-text").textContent = "You found the shortest path!";
@@ -169,7 +171,12 @@ class GameController {
             start = allCountries[Math.floor(Math.random() * allCountries.length)]
             end = allCountries[Math.floor(Math.random() * allCountries.length)]
             shortestPath = this.graph.shortestPath(start, end)
-        } while(start === end || shortestPath == null || shortestPath.length <= 2);
+        } while(start === end || shortestPath == null
+            // paths going through russia aren't very interesting
+            || shortestPath.indexOf("RUS") !== -1
+            || shortestPath.length > 9
+            || shortestPath.length < 4
+        );
         console.log("qqq", shortestPath)
         this.start = start;
         this.end = end;
@@ -180,7 +187,7 @@ class GameController {
             end: {id: end, name: this.worldMap.getCountryNameFromId(end)},
             shortestPathLen: this.shortestPathLen,
             boundingCoordinates: this.worldMap.getCountriesMinMaxCoords([start, end]),
-            shortestPathString: shortestPath.map(u => this.worldMap.getCountryNameFromId(u)).join("→")
+            shortestPathString: shortestPath.map(u => this.worldMap.getCountryNameFromId(u)).join(" → ")
         }
     }
     
